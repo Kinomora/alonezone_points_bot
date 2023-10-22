@@ -1,0 +1,21 @@
+✔ Make a database with 2 tables
+✔ 1 table holds members and current points
+✔ 1 table holds dontaion history details
+
+* Users should be able to:
+✔ Check their current points
+✔ Check their donation history
+✔ Check their point history
+✔ Check available rewareds
+✔ Claim rewards which removes points
+
+* Admins should be able to:
+✔ Add donations made by users
+✔ Add points to a user
+✔ Remove points from users
+✔ Check full history of user interactions
+✔ Check the bot version
+✔ Secure the SQL injection command
+
+Debug:
+Prevent users from seeing admin commands
