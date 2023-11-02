@@ -18,4 +18,12 @@
 ✔ Secure the SQL injection command
 
 Debug:
-Prevent users from seeing admin commands
+Handle error when users try to run an admin
+ command
+
+
+Add another database for rewards tracking
+Dont let users claim the same reward twice
+ except when the reward allows it
+Support rewards that have other rewards as
+ requirements
