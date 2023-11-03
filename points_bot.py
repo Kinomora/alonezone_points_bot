@@ -117,16 +117,16 @@ def valid_date(date_string):
 # 7 REWARD COSTS
 def get_reward_cost(reward):
     switcher = {
-        1: 75,  # 3-month temporary in-game icon
+        1: 75,   # 3-month temporary in-game icon
         2: 200,  # Permanent icon and discord role
-        3: 50,  # Discord role change or icon unlock
+        3: 50,   # Discord role change or icon unlock
         4: 275,  # Custom SOTW
         5: 400,  # Custom event (non-SOTW)
     }
     return switcher.get(reward, 0)
 
 
-# 7 REWARD COSTS
+# 8 REWARD NAMES
 def get_reward_name(reward_id):
     switcher = {
         1: "3-month temporary in-game icon",
@@ -134,6 +134,30 @@ def get_reward_name(reward_id):
         3: "Discord role change or icon unlock",
         4: "Custom SOTW",
         5: "Custom event (non-SOTW)",
+    }
+    return switcher.get(reward_id, 0)
+
+
+# 9 REWARD LIMITS
+def get_reward_limits(reward_id):
+    switcher = {
+        1: 0,  # Members can get a temporary icon unlimited times
+        2: 1,  # Members can only unlock a permanent icon once
+        3: 0,  # Members can pay to unlock a discord icon or change their role color unlimited times
+        4: 0,  # Members can create unlimited SOTW events
+        5: 0,  # Members can create unlimited non-SOTW events
+    }
+    return switcher.get(reward_id, 0)
+
+
+# 10 REWARD PRE-REQUSITES
+def get_reward_pre_reqs(reward_id):
+    switcher = {
+        1: 0,  # Temp icon has no pre-reqs
+        2: 0,  # Discord name has no pre-reqs
+        3: 2,  # Change color/icon requires reward id 2
+        4: 0,  # SOTW event has no pre-reqs
+        5: 0,  # non-SOTW event has no pre-reqs
     }
     return switcher.get(reward_id, 0)
 
@@ -148,10 +172,12 @@ cursor_main = db_main.cursor()
 result_main = [0]
 try:
     cursor_main.execute("CREATE TABLE members(discord_id_receiver PRIMARY KEY, current_points)")
+    printd("Table 'members' created successfully.")
 except Exception as e:
     printd(e)
 try:
-    cursor_main.execute("CREATE TABLE donations(txid type PRIMARY KEY, discord_id_receiver, discord_name_admin, date_of_action, donation_amount, points_delta, note)")
+    cursor_main.execute("CREATE TABLE donations(txid type PRIMARY KEY, discord_id_receiver, discord_name_admin, date_of_action, donation_amount, points_delta, reward_id, note)")
+    printd("Table 'donations' created successfully.")
 except Exception as e:
     printd(e)
 
@@ -223,7 +249,7 @@ async def claim_reward(interaction, reward_id: int):
     note = "Reward claimed with ID: " + str(reward_id)
 
     # Make sure all of the input data is valid before injecting it into the database
-    validated_input = valid_command_user(discord_id_receiver, points_delta)
+    validated_input = valid_command_user(discord_id_receiver, points_delta, reward_id)
 
     if points_delta != 0:
         if validated_input == "0":
@@ -231,7 +257,7 @@ async def claim_reward(interaction, reward_id: int):
             db = sql.connect('alonezone_points.db')
             cursor = db.cursor()
             # Add the "donation" to the donation history table, this will be a "0" GP donation with a negative point value
-            cursor.execute("INSERT INTO donations VALUES(" + txid + ", " + discord_id_receiver + ", '" + interaction.user.name + "', '" + date + "', " + str(donation) + ", " + str(points_delta) + ", '" + str(note) + "')")
+            cursor.execute("INSERT INTO donations VALUES(" + txid + ", " + discord_id_receiver + ", '" + interaction.user.name + "', '" + date + "', " + str(donation) + ", " + str(points_delta) + ", " + str(reward_id) + ", '" + str(note) + "')")
             db.commit()
             printd("Inserted data into donations table.")
             # Update the member table with the new point total
@@ -262,8 +288,8 @@ async def claim_reward(interaction, reward_id: int):
 @bot.command(name="rewards", description="Shows the user the currently available rewards.", guild=discord.Object(id=guild))
 async def rewards(interaction):
     rewards_list = [('1', '75', '3-month temporary in-game clan icon'),
-                    ('2', '200', 'Permanent in-game clan icon and discord role w/ custom name and icon'),
-                    ('3', '50', 'Discord Role icon unlock or change role name/color/icon'),
+                    ('2', '200', 'Permanent in-game clan icon and discord role w/ custom name and color'),
+                    ('3', '50', 'Discord role icon unlock *OR* change role name/color/icon'),
                     ('4', '275', 'Custom SOTW event - Must be claimed during a SOTW vote period'),
                     ('5', '400', 'Custom non-SOTW event - An admin will message you to discuss details')]
     await interaction.response.send_message(f"```\n{pretty_outputs(['ID', 'COST', 'DESCRIPTION'], rewards_list)}\n```", allowed_mentions=allowed, ephemeral=slient_responses)
@@ -293,7 +319,7 @@ async def add_donation_cmd(interaction, member: discord.Member, date: str, donat
         db = sql.connect('alonezone_points.db')
         cursor = db.cursor()
         # Add the donation to the donation history table
-        cursor.execute("INSERT INTO donations VALUES(" + txid + ", " + discord_id_receiver + ", '" + interaction.user.name + "', '" + date + "', " + str(donation) + ", " + str(points_delta) + ", '" + str(note) + "')")
+        cursor.execute("INSERT INTO donations VALUES(" + txid + ", " + discord_id_receiver + ", '" + interaction.user.name + "', '" + date + "', " + str(donation) + ", " + str(points_delta) + ", " + "-1" + ", '" + str(note) + "')")
         db.commit()
         printd("Inserted data into donations table.")
         # Update the member table with the donors new point total
@@ -333,7 +359,7 @@ async def remove_points_cmd(interaction, member: discord.Member, points_to_remov
             db = sql.connect('alonezone_points.db')
             cursor = db.cursor()
             # Add the "donation" to the donation history table, this will be a "0" GP donation with a negative point value
-            cursor.execute("INSERT INTO donations VALUES(" + txid + ", " + discord_id_receiver + ", '" + interaction.user.name + "', '" + date + "', " + str(donation) + ", " + str(points_delta) + ", '" + str(note) + "')")
+            cursor.execute("INSERT INTO donations VALUES(" + txid + ", " + discord_id_receiver + ", '" + interaction.user.name + "', '" + date + "', " + str(donation) + ", " + str(points_delta) + ", " + "-1" + ", '" + str(note) + "')")
             db.commit()
             printd("Inserted data into donations table.")
             # Update the member table with the new point total
@@ -503,8 +529,9 @@ def valid_command_admin(discord_id_receiver, discord_admin_object, date_of_actio
 
 
 # 7 VALIDATE COMMAND but for users with different requirements
-def valid_command_user(discord_id_receiver, points_delta):
+def valid_command_user(discord_id_receiver, points_delta, reward_id):
     # In theory this command should only be used for claiming rewards
+    # We need to verify that the member exists in the database, that they have enough points, and that they haven't already claimed that reward
     printd("Validating command..")
     if not member_exists(discord_id_receiver):
         printd("New member creation..")
@@ -514,10 +541,76 @@ def valid_command_user(discord_id_receiver, points_delta):
     else:
         printd("Point delta validation..")
         if valid_points_delta(discord_id_receiver, points_delta):
-            printd("All tests passed!")
-            return "0"
+            result_hold = can_claim_reward(discord_id_receiver, reward_id)
+            if result_hold == "0":
+                printd("All tests passed!")
+                return "0"
+            else:
+                printd(str(result_hold) + " // valid_command_user")
+                return result_hold
         else:
             return "Unable to claim reward, not enough points."
+
+
+# 8 Make sure users don't already have the reward they want to claim
+# TODO make sure this works
+def can_claim_reward(discord_id_receiver, reward_id):
+    # Certain rewards can only be claimed once
+    printd("Validating reward claim history..")
+
+    # Database opening
+    db = sql.connect('alonezone_points.db')
+
+    # We need to check if the reward has a pre-requisite
+    # 0 means none; >0 means it requires the returned reward ID
+    pre_req = int(get_reward_pre_reqs(reward_id))
+    if pre_req == 0:
+        printd("Reward has no pre-requsites")
+    else:
+        printd("Reward id " + str(reward_id) + " requires reward id " + str(pre_req) + " to purchase..")
+
+        # ADD HANDLES FOR EACH REWARD WITH PRE-REQS HERE
+        # Reward ID 3 - Requires reward ID 2
+        printd("Reward ID 3 requires reward ID 2..")
+        cursor = db.cursor()
+        result = cursor.execute("SELECT reward_id FROM donations WHERE discord_id_receiver=" + str(discord_id_receiver) + " AND reward_id=2")
+        fetchall = result.fetchall()
+        printd(str(fetchall) + " // " + str(len(fetchall)))
+        # This part is really janky I just could not get "fetchall is empty" to work right at all
+        if len(fetchall) == 0:
+            printd("Member does not have the required pre-requsite")
+            cursor.close()
+            db.close()
+            return "Unable to claim reward!\nYou must have unlocked \"Permanent Discord Role with Custom Name (ID 2)\" before you can unlock a Role Icon or change the color."
+
+    printd("Reward has no pre-requsite or has one and the player meets that requirement.")
+    cursor = db.cursor()
+    cursor.execute("SELECT reward_id FROM donations WHERE discord_id_receiver=" + str(discord_id_receiver))
+
+# TODO This check seems to be broken. You can claim all rewards multiple times.
+    # We need to check if the member has claimed the same reward ID before
+    for row in cursor:
+        printd(("priting row data: " + str(row)) + " // " + str(row == int(reward_id)))
+        if row == int(reward_id):
+            printd("Member has claimed reward id " + str(reward_id) + " before.")
+
+            # We need to check the maximum number of times that reward ID can be claimed
+            # ADD HANDLES FOR EACH REWARD WHICH CANNOT BE CLAIMED MULTIPLE TIMES
+            if int(reward_id) == 2:
+                printd("Cannot claim reward id 2 multiple times.")
+                cursor.close()
+                db.close()
+                return "Cannot claim a permanent discord and clan role multiple times!"
+            else:
+                printd("Playes can claim reward id " + str(reward_id) + " multiple times.")
+                cursor.close()
+                db.close()
+                return "0"
+        else:
+            printd("Member has not claimed reward id " + str(reward_id) + " before.")
+            cursor.close()
+            db.close()
+            return "0"
 
 
 # ============================================================

@@ -20,6 +20,7 @@
 Debug:
 Handle error when users try to run an admin
  command
+Process messages exceeding 2000 characters
 
 
 Add another database for rewards tracking
@@ -27,3 +28,8 @@ Dont let users claim the same reward twice
  except when the reward allows it
 Support rewards that have other rewards as
  requirements
+
+
+Future?:
+Support google sheets exporting
+Support multiple pre-reqs for rewards
