@@ -19,7 +19,8 @@
 
 Debug:
 Process messages exceeding 2000 characters
-
+Figure out why one of the admin commands
+ is acting like a user command
 
 Add another database for rewards tracking
 Dont let users claim the same reward twice

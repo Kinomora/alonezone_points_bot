@@ -24,7 +24,7 @@ args = parser.parse_args()
 # ============================================================
 intents = discord.Intents.all()
 client = discord.Client(intents=intents)
-slient_responses = False
+silent_responses = False
 bot = app_commands.CommandTree(client)
 allowed = discord.AllowedMentions.all()
 
@@ -200,18 +200,18 @@ printd("===END STARTUP===")
 # ============================================================
 #
 # 1 Lets the user check how many points they have
-@bot.command(name="points", description="Allows the member to check their current points.", guild=discord.Object(id=guild))
+@bot.command(name="points", description="Allows a member to check their current points.", guild=discord.Object(id=guild))
 async def points_cmd(interaction):
     points = get_user_points(str(interaction.user.id))
 
     if abs(points) == 1:
-        await interaction.response.send_message("You have " + str(points) + " point!", allowed_mentions=allowed, ephemeral=slient_responses)
+        await interaction.response.send_message("You have " + str(points) + " point!", allowed_mentions=allowed, ephemeral=silent_responses)
     else:
-        await interaction.response.send_message("You have " + str(points) + " points!", allowed_mentions=allowed, ephemeral=slient_responses)
+        await interaction.response.send_message("You have " + str(points) + " points!", allowed_mentions=allowed, ephemeral=silent_responses)
 
 
 # 2 Lets the user check their donation history
-@bot.command(name="donation_history", description="Allows the member to check their donation history.", guild=discord.Object(id=guild))
+@bot.command(name="donation_history", description="Allows a member to check their donation history.", guild=discord.Object(id=guild))
 async def donation_history_cmd(interaction):
     db = sql.connect('alonezone_points.db')
     cursor = db.cursor()
@@ -220,11 +220,11 @@ async def donation_history_cmd(interaction):
     headers = ('DATE', 'DONATION')
     cursor.close()
     db.close()
-    await interaction.response.send_message(f"```\n{pretty_outputs(headers, table_data)}\n```", allowed_mentions=allowed, ephemeral=slient_responses)
+    await interaction.response.send_message(f"```\n{pretty_outputs(headers, table_data)}\n```", allowed_mentions=allowed, ephemeral=silent_responses)
 
 
 # 3 Lets the user check their point history
-@bot.command(name="point_history", description="Allows the member to check their point history.", guild=discord.Object(id=guild))
+@bot.command(name="point_history", description="Allows a member to check their point history.", guild=discord.Object(id=guild))
 async def point_history_cmd(interaction):
     db = sql.connect('alonezone_points.db')
     cursor = db.cursor()
@@ -233,13 +233,13 @@ async def point_history_cmd(interaction):
     headers = ('DATE', 'POINTS')
     cursor.close()
     db.close()
-    await interaction.response.send_message(f"```\n{pretty_outputs(headers, table_data)}\n```", allowed_mentions=allowed, ephemeral=slient_responses)
+    await interaction.response.send_message(f"```\n{pretty_outputs(headers, table_data)}\n```", allowed_mentions=allowed, ephemeral=silent_responses)
 
 
 # 4 Lets the user claim a reward with their points
-@bot.command(name="claim_reward", description="Allows the member to claim a reward using points.", guild=discord.Object(id=guild))
+@bot.command(name="claim_reward", description="Allows a member to claim a reward using points.", guild=discord.Object(id=guild))
 @app_commands.describe(reward_id='The reward number you want to claim. Refer to /rewards for a list', )
-async def claim_reward(interaction, reward_id: int):
+async def claim_reward_cmd(interaction, reward_id: int):
     txid = str(get_next_donation_TXID())
     points_delta = ((get_reward_cost(reward_id)) * -1)
     printd("Points to be removed: " + str(points_delta))
@@ -269,30 +269,30 @@ async def claim_reward(interaction, reward_id: int):
             db.close()
             if abs(points_delta) == 1:
                 await interaction.response.send_message("**Reward claimed!**\n" + str(points_delta)[1:] + " point has been duducted and your new balance is " + str(get_user_points(discord_id_receiver)) + ".\nAn admin has been notified and will deliver your reward shortly.\n",
-                                                        allowed_mentions=allowed, ephemeral=slient_responses)
+                                                        allowed_mentions=allowed, ephemeral=silent_responses)
             else:
                 await interaction.response.send_message("**Reward claimed!**\n" + str(points_delta)[1:] + " points have been duducted and your new balance is " + str(get_user_points(discord_id_receiver)) + ".\nAn admin has been notified and will deliver your reward shortly.\n",
-                                                        allowed_mentions=allowed, ephemeral=slient_responses)
+                                                        allowed_mentions=allowed, ephemeral=silent_responses)
                 await interaction.guild.get_channel(admin_channel).send("A member has claimed a clan point reward!\n"
                                                                         "Please refer to the following record and process the reward.\n"
                                                                         "When completed, react to this message to indicate the reward has been processed.\n"
                                                                         "> Member: <@" + str(interaction.user.id) + ">\n"
                                                                         "> Reward: " + get_reward_name(reward_id))
         else:
-            await interaction.response.send_message(validated_input, allowed_mentions=allowed, ephemeral=slient_responses)
+            await interaction.response.send_message(validated_input, allowed_mentions=allowed, ephemeral=silent_responses)
     else:
-        await interaction.response.send_message("Invalid reward ID provided! Please check /rewards and make sure you are claiming the correct reward.", allowed_mentions=allowed, ephemeral=slient_responses)
+        await interaction.response.send_message("Invalid reward ID provided! Please check /rewards and make sure you are claiming the correct reward.", allowed_mentions=allowed, ephemeral=silent_responses)
 
 
 # 5 Lets the user see all the rewards available
-@bot.command(name="rewards", description="Shows the user the currently available rewards.", guild=discord.Object(id=guild))
-async def rewards(interaction):
+@bot.command(name="rewards", description="Shows the list of currently available rewards.", guild=discord.Object(id=guild))
+async def rewards_cmd(interaction):
     rewards_list = [('1', '75', '3-month temporary in-game clan icon'),
                     ('2', '200', 'Permanent in-game clan icon and discord role w/ custom name and color'),
                     ('3', '50', 'Discord role icon unlock *OR* change role name/color/icon'),
                     ('4', '275', 'Custom SOTW event - Must be claimed during a SOTW vote period'),
                     ('5', '400', 'Custom non-SOTW event - An admin will message you to discuss details')]
-    await interaction.response.send_message(f"```\n{pretty_outputs(['ID', 'COST', 'DESCRIPTION'], rewards_list)}\n```", allowed_mentions=allowed, ephemeral=slient_responses)
+    await interaction.response.send_message(f"```\n{pretty_outputs(['ID', 'COST', 'DESCRIPTION'], rewards_list)}\n```", allowed_mentions=allowed, ephemeral=silent_responses)
 
 
 # ============================================================
@@ -328,9 +328,9 @@ async def add_donation_cmd(interaction, member: discord.Member, date: str, donat
         # Be a good dev and do your own gc
         cursor.close()
         db.close()
-        await interaction.response.send_message("Successfully added donation of " + str(donation) + "gp from " + str(member.name) + ", awarding " + str(points_delta) + " points.", allowed_mentions=allowed, ephemeral=slient_responses)
+        await interaction.response.send_message("Successfully added donation of " + str(donation) + "gp from " + str(member.name) + ", awarding " + str(points_delta) + " points.", allowed_mentions=allowed, ephemeral=silent_responses)
     else:
-        await interaction.response.send_message(validated_input, allowed_mentions=allowed, ephemeral=slient_responses)
+        await interaction.response.send_message(validated_input, allowed_mentions=allowed, ephemeral=silent_responses)
 
 
 # 2 Lets an admin remove points from a member
@@ -369,13 +369,13 @@ async def remove_points_cmd(interaction, member: discord.Member, points_to_remov
             cursor.close()
             db.close()
             if abs(points_delta) == 1:
-                await interaction.response.send_message("Successfully removed " + str(points_delta)[1:] + " point from " + str(member.name) + ", new balance is " + str(get_user_points(discord_id_receiver)) + ".", allowed_mentions=allowed, ephemeral=slient_responses)
+                await interaction.response.send_message("Successfully removed " + str(points_delta)[1:] + " point from " + str(member.name) + ", new balance is " + str(get_user_points(discord_id_receiver)) + ".", allowed_mentions=allowed, ephemeral=silent_responses)
             else:
-                await interaction.response.send_message("Successfully removed " + str(points_delta)[1:] + " points from " + str(member.name) + ", new balance is " + str(get_user_points(discord_id_receiver)) + ".", allowed_mentions=allowed, ephemeral=slient_responses)
+                await interaction.response.send_message("Successfully removed " + str(points_delta)[1:] + " points from " + str(member.name) + ", new balance is " + str(get_user_points(discord_id_receiver)) + ".", allowed_mentions=allowed, ephemeral=silent_responses)
         else:
-            await interaction.response.send_message(validated_input, allowed_mentions=allowed, ephemeral=slient_responses)
+            await interaction.response.send_message(validated_input, allowed_mentions=allowed, ephemeral=silent_responses)
     else:
-        await interaction.response.send_message("Cannot remove 0 points!", allowed_mentions=allowed, ephemeral=slient_responses)
+        await interaction.response.send_message("Cannot remove 0 points!", allowed_mentions=allowed, ephemeral=silent_responses)
 
 
 # 3 Lets an admin check the full history of points and donations of a member
@@ -392,31 +392,36 @@ async def all_history_cmd(interaction, member: discord.Member):
     headers = ('TXID', 'ADMIN', 'DATE', 'DONATION', 'POINTS', 'NOTE')
     cursor.close()
     db.close()
-    await interaction.response.send_message(f"```\n{pretty_outputs(headers, table_data)}\n```", allowed_mentions=allowed, ephemeral=slient_responses)
+    await interaction.response.send_message(f"```n{pretty_outputs(headers, table_data)}\n```", allowed_mentions=allowed, ephemeral=silent_responses)
 
 
 # 4 Lets an admin check the bot version
 @bot.command(name="version", description="Displays the bots version.", guild=discord.Object(id=guild))
 @app_commands.checks.has_permissions(administrator=True)
 async def version(interaction):
-    await interaction.response.send_message("Currenly running: " + clientVersion, allowed_mentions=allowed, ephemeral=slient_responses)
+    await interaction.response.send_message("Currenly running: " + clientVersion, allowed_mentions=allowed, ephemeral=silent_responses)
 
 
 # 5 Lets a specific user send SQL commands directly through discord
 # THIS IS AN EXTREMELY DANGEROUS COMMAND, DO NOT LET ANYONE USE THIS
 @bot.command(name="sql", description="Sends SQL commands", guild=discord.Object(id=guild))
 @app_commands.checks.has_permissions(administrator=True)
-@app_commands.describe(command='The SQL command to send.', )
+@app_commands.describe(
+    command='The SQL command to send.',
+)
 async def SQL(interaction, command: str):
     if (str(interaction.user.id) == "849674454228271105") | (str(interaction.user.id) == "228206002585993218"):  # ID's are kinomora and alonesome
         db = sql.connect('alonezone_points.db')
         cursor = db.cursor()
         result = cursor.execute(command)
-        await interaction.response.send_message(result.fetchall(), allowed_mentions=allowed, ephemeral=slient_responses)
+        await interaction.response.send_message(result.fetchall(), allowed_mentions=allowed, ephemeral=silent_responses)
         cursor.close()
         db.close()
     else:
-        await interaction.response.send_message("Sorry, only Trusted Users:tm: can execute SQL commands!", allowed_mentions=allowed, ephemeral=slient_responses)
+        await interaction.response.send_message("Sorry, only Trusted Users:tm: can execute SQL commands!", allowed_mentions=allowed, ephemeral=silent_responses)
+
+
+
 
 
 # ============================================================
