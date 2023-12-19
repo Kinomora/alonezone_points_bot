@@ -200,8 +200,8 @@ printd("===END STARTUP===")
 # ============================================================
 #
 # 1 Lets the user check how many points they have
-@bot.command(name="check_points", description="Allows the member to check their current points.", guild=discord.Object(id=guild))
-async def check_points_cmd(interaction):
+@bot.command(name="points", description="Allows the member to check their current points.", guild=discord.Object(id=guild))
+async def points_cmd(interaction):
     points = get_user_points(str(interaction.user.id))
 
     if abs(points) == 1:
@@ -211,8 +211,8 @@ async def check_points_cmd(interaction):
 
 
 # 2 Lets the user check their donation history
-@bot.command(name="check_donation_history", description="Allows the member to check their donation history.", guild=discord.Object(id=guild))
-async def check_donation_history_cmd(interaction):
+@bot.command(name="donation_history", description="Allows the member to check their donation history.", guild=discord.Object(id=guild))
+async def donation_history_cmd(interaction):
     db = sql.connect('alonezone_points.db')
     cursor = db.cursor()
     result = cursor.execute("SELECT date_of_action, donation_amount FROM donations WHERE discord_id_receiver=" + str(interaction.user.id) + " AND donation_amount >0 ORDER BY txid")
@@ -224,8 +224,8 @@ async def check_donation_history_cmd(interaction):
 
 
 # 3 Lets the user check their point history
-@bot.command(name="check_point_history", description="Allows the member to check their point history.", guild=discord.Object(id=guild))
-async def check_point_history_cmd(interaction):
+@bot.command(name="point_history", description="Allows the member to check their point history.", guild=discord.Object(id=guild))
+async def point_history_cmd(interaction):
     db = sql.connect('alonezone_points.db')
     cursor = db.cursor()
     result = cursor.execute("SELECT date_of_action, points_delta FROM donations WHERE discord_id_receiver=" + str(interaction.user.id) + " AND points_delta != 0 ORDER BY txid")
@@ -298,7 +298,6 @@ async def rewards(interaction):
 # ============================================================
 # =ADMIN COMMANDS=============================================
 # ============================================================
-# TODO: Handle non-admins attempting to use admin commands "gracefully"
 # 1 Lets an admin add points to a member
 @bot.command(name="add_donation", description="Allows an admin to add a donation to a members history.", guild=discord.Object(id=guild))
 @app_commands.checks.has_permissions(administrator=True)
@@ -380,10 +379,12 @@ async def remove_points_cmd(interaction, member: discord.Member, points_to_remov
 
 
 # 3 Lets an admin check the full history of points and donations of a member
-@bot.command(name="check_all_history", description="Allows an admin to check a members full record.", guild=discord.Object(id=guild))
+@bot.command(name="all_history", description="Allows an admin to check a members full record.", guild=discord.Object(id=guild))
 @app_commands.checks.has_permissions(administrator=True)
-@app_commands.describe(member='The discord tag of the member donating.', )
-async def check_all_history_cmd(interaction, member: discord.Member):
+@app_commands.describe(
+    member='The discord tag of the member donating.'
+)
+async def all_history_cmd(interaction, member: discord.Member):
     db = sql.connect('alonezone_points.db')
     cursor = db.cursor()
     result = cursor.execute("SELECT txid, discord_name_admin, date_of_action, donation_amount, points_delta, note FROM donations WHERE discord_id_receiver=" + str(member.id) + " ORDER BY txid")
@@ -397,7 +398,7 @@ async def check_all_history_cmd(interaction, member: discord.Member):
 # 4 Lets an admin check the bot version
 @bot.command(name="version", description="Displays the bots version.", guild=discord.Object(id=guild))
 @app_commands.checks.has_permissions(administrator=True)
-async def check_version(interaction):
+async def version(interaction):
     await interaction.response.send_message("Currenly running: " + clientVersion, allowed_mentions=allowed, ephemeral=slient_responses)
 
 
@@ -407,7 +408,7 @@ async def check_version(interaction):
 @app_commands.checks.has_permissions(administrator=True)
 @app_commands.describe(command='The SQL command to send.', )
 async def SQL(interaction, command: str):
-    if str(interaction.user.id) == "849674454228271105":
+    if (str(interaction.user.id) == "849674454228271105") | (str(interaction.user.id) == "228206002585993218"):  # ID's are kinomora and alonesome
         db = sql.connect('alonezone_points.db')
         cursor = db.cursor()
         result = cursor.execute(command)
@@ -415,7 +416,7 @@ async def SQL(interaction, command: str):
         cursor.close()
         db.close()
     else:
-        await interaction.response.send_message("Sorry, only Trusted Users can execute SQL commands!", allowed_mentions=allowed, ephemeral=slient_responses)
+        await interaction.response.send_message("Sorry, only Trusted Users:tm: can execute SQL commands!", allowed_mentions=allowed, ephemeral=slient_responses)
 
 
 # ============================================================
@@ -576,7 +577,7 @@ def can_claim_reward(discord_id_receiver, reward_id):
         result = cursor.execute("SELECT reward_id FROM donations WHERE discord_id_receiver=" + str(discord_id_receiver) + " AND reward_id=2")
         fetchall = result.fetchall()
         printd(str(fetchall) + " // " + str(len(fetchall)))
-        # This part is really janky I just could not get "fetchall is empty" to work right at all
+        # This check is kind of janky. It just checks the length of the list of results where the reward ID = 2; if the list is empty, then they dont have it
         if len(fetchall) == 0:
             printd("Member does not have the required pre-requsite")
             cursor.close()
