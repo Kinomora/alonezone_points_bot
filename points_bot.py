@@ -392,7 +392,7 @@ async def all_history_cmd(interaction, member: discord.Member):
     headers = ('TXID', 'ADMIN', 'DATE', 'DONATION', 'POINTS', 'NOTE')
     cursor.close()
     db.close()
-    await interaction.response.send_message(f"```n{pretty_outputs(headers, table_data)}\n```", allowed_mentions=allowed, ephemeral=silent_responses)
+    await interaction.response.send_message(f"```\n{pretty_outputs(headers, table_data)}\n```", allowed_mentions=allowed, ephemeral=silent_responses)
 
 
 # 4 Lets an admin check the bot version
@@ -419,9 +419,6 @@ async def SQL(interaction, command: str):
         db.close()
     else:
         await interaction.response.send_message("Sorry, only Trusted Users:tm: can execute SQL commands!", allowed_mentions=allowed, ephemeral=silent_responses)
-
-
-
 
 
 # ============================================================
