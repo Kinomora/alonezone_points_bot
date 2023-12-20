@@ -19,8 +19,7 @@
 
 Debug:
 Process messages exceeding 2000 characters
-Figure out why one of the admin commands
- is acting like a user command
+
 
 Add another database for rewards tracking
 Dont let users claim the same reward twice
@@ -32,105 +31,3 @@ Support rewards that have other rewards as
 Future?:
 Support google sheets exporting
 Support multiple pre-reqs for rewards
-
-
-# ============================================================
-# =USER COMMANDS==============================================
-# ============================================================
-#
-# 1 Lets the user check how many points they have
-@bot.command(name="points", description="Allows a member to check their current points.", guild=discord.Object(id=guild))
-async def points_cmd(interaction):
-    points = get_user_points(str(interaction.user.id))
-
-    if abs(points) == 1:
-        await interaction.response.send_message("You have " + str(points) + " point!", allowed_mentions=allowed, ephemeral=silent_responses)
-    else:
-        await interaction.response.send_message("You have " + str(points) + " points!", allowed_mentions=allowed, ephemeral=silent_responses)
-
-
-# 2 Lets the user check their donation history
-@bot.command(name="donation_history", description="Allows a member to check their donation history.", guild=discord.Object(id=guild))
-async def donation_history_cmd(interaction):
-    db = sql.connect('alonezone_points.db')
-    cursor = db.cursor()
-    result = cursor.execute("SELECT date_of_action, donation_amount FROM donations WHERE discord_id_receiver=" + str(interaction.user.id) + " AND donation_amount >0 ORDER BY txid")
-    table_data = result.fetchall()
-    headers = ('DATE', 'DONATION')
-    cursor.close()
-    db.close()
-    await interaction.response.send_message(f"```\n{pretty_outputs(headers, table_data)}\n```", allowed_mentions=allowed, ephemeral=silent_responses)
-
-
-# 3 Lets the user check their point history
-@bot.command(name="point_history", description="Allows a member to check their point history.", guild=discord.Object(id=guild))
-async def point_history_cmd(interaction):
-    db = sql.connect('alonezone_points.db')
-    cursor = db.cursor()
-    result = cursor.execute("SELECT date_of_action, points_delta FROM donations WHERE discord_id_receiver=" + str(interaction.user.id) + " AND points_delta != 0 ORDER BY txid")
-    table_data = result.fetchall()
-    headers = ('DATE', 'POINTS')
-    cursor.close()
-    db.close()
-    await interaction.response.send_message(f"```\n{pretty_outputs(headers, table_data)}\n```", allowed_mentions=allowed, ephemeral=silent_responses)
-
-
-# 4 Lets the user claim a reward with their points
-@bot.command(name="claim_reward", description="Allows a member to claim a reward using points.", guild=discord.Object(id=guild))
-@app_commands.describe(reward_id='The reward number you want to claim. Refer to /rewards for a list', )
-async def claim_reward_cmd(interaction, reward_id: int):
-    txid = str(get_next_donation_TXID())
-    points_delta = ((get_reward_cost(reward_id)) * -1)
-    printd("Points to be removed: " + str(points_delta))
-    donation = str(0)
-    discord_id_receiver = str(interaction.user.id)
-    date = str(datetime.today().strftime('%Y-%m-%d'))
-    note = "Reward claimed with ID: " + str(reward_id)
-
-    # Make sure all of the input data is valid before injecting it into the database
-    validated_input = valid_command_user(discord_id_receiver, points_delta, reward_id)
-
-    if points_delta != 0:
-        if validated_input == "0":
-            printd("Command validated, connecting to DB.")
-            db = sql.connect('alonezone_points.db')
-            cursor = db.cursor()
-            # Add the "donation" to the donation history table, this will be a "0" GP donation with a negative point value
-            cursor.execute("INSERT INTO donations VALUES(" + txid + ", " + discord_id_receiver + ", '" + interaction.user.name + "', '" + date + "', " + str(donation) + ", " + str(points_delta) + ", " + str(reward_id) + ", '" + str(note) + "')")
-            db.commit()
-            printd("Inserted data into donations table.")
-            # Update the member table with the new point total
-            cursor.execute("UPDATE members SET current_points = " + str(get_user_points(discord_id_receiver) + points_delta) + " WHERE discord_id_receiver='" + discord_id_receiver + "'")
-            db.commit()
-            printd("Updated data in the members table.")
-            # Be a good dev and do your own gc
-            cursor.close()
-            db.close()
-            if abs(points_delta) == 1:
-                await interaction.response.send_message("**Reward claimed!**\n" + str(points_delta)[1:] + " point has been duducted and your new balance is " + str(get_user_points(discord_id_receiver)) + ".\nAn admin has been notified and will deliver your reward shortly.\n",
-                                                        allowed_mentions=allowed, ephemeral=silent_responses)
-            else:
-                await interaction.response.send_message("**Reward claimed!**\n" + str(points_delta)[1:] + " points have been duducted and your new balance is " + str(get_user_points(discord_id_receiver)) + ".\nAn admin has been notified and will deliver your reward shortly.\n",
-                                                        allowed_mentions=allowed, ephemeral=silent_responses)
-                await interaction.guild.get_channel(admin_channel).send("A member has claimed a clan point reward!\n"
-                                                                        "Please refer to the following record and process the reward.\n"
-                                                                        "When completed, react to this message to indicate the reward has been processed.\n"
-                                                                        "> Member: <@" + str(interaction.user.id) + ">\n"
-                                                                        "> Reward: " + get_reward_name(reward_id))
-        else:
-            await interaction.response.send_message(validated_input, allowed_mentions=allowed, ephemeral=silent_responses)
-    else:
-        await interaction.response.send_message("Invalid reward ID provided! Please check /rewards and make sure you are claiming the correct reward.", allowed_mentions=allowed, ephemeral=silent_responses)
-
-
-# 5 Lets the user see all the rewards available
-@bot.command(name="rewards", description="Shows the list of currently available rewards.", guild=discord.Object(id=guild))
-async def rewards_cmd(interaction):
-    rewards_list = [('1', '75', '3-month temporary in-game clan icon'),
-                    ('2', '200', 'Permanent in-game clan icon and discord role w/ custom name and color'),
-                    ('3', '50', 'Discord role icon unlock *OR* change role name/color/icon'),
-                    ('4', '275', 'Custom SOTW event - Must be claimed during a SOTW vote period'),
-                    ('5', '400', 'Custom non-SOTW event - An admin will message you to discuss details')]
-    await interaction.response.send_message(f"```\n{pretty_outputs(['ID', 'COST', 'DESCRIPTION'], rewards_list)}\n```", allowed_mentions=allowed, ephemeral=silent_responses)
-
-
