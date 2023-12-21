@@ -1,3 +1,4 @@
+* Broad program operations
 ✔ Make a database with 2 tables
 ✔ 1 table holds members and current points
 ✔ 1 table holds dontaion history details
@@ -17,17 +18,13 @@
 ✔ Check the bot version
 ✔ Secure the SQL injection command
 
-Debug:
+Debug/Fix:
 Process messages exceeding 2000 characters
-
-
-Add another database for rewards tracking
-Dont let users claim the same reward twice
- except when the reward allows it
-Support rewards that have other rewards as
- requirements
+Add required note for claiming role so admins can do it quickly
 
 
 Future?:
 Support google sheets exporting
 Support multiple pre-reqs for rewards
+Support claiming a reward only X times
+Support rewards with time locks (ie once a month)

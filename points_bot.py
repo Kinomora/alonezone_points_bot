@@ -34,7 +34,7 @@ allowed = discord.AllowedMentions.all()
 # ============================================================
 guild = 991568104687681577
 admin_channel = 1164655165094244352
-sql_admin = 849674454228271105 # Whoever this user ID is can send raw SQL commands to the server as long as they are also an admin. Set to "0" to disable.
+sql_admin = 849674454228271105  # Whoever this user ID is can send raw SQL commands to the server as long as they are also an admin. Set to "0" to disable.
 clientVersion = "Version 1.0" + args.ver
 database = 'alonezone_points.db'
 if args.mode == "True":
@@ -302,7 +302,7 @@ async def rewards_cmd(interaction):
 # ============================================================
 # 1 Lets an admin add points to a member
 @bot.command(name="add_donation", description="Allows an admin to add a donation to a members history.", guild=discord.Object(id=guild))
-# @app_commands.checks.has_permissions(administrator=True)
+@app_commands.checks.has_permissions(administrator=True)
 @app_commands.describe(
     member='The discord ID of the member donating.',
     date='The date the donation occurred. Must be formatted as YYYY-MM-DD ie 2022-05-22',
@@ -310,110 +310,98 @@ async def rewards_cmd(interaction):
     note='Optional: A note about the transaction such as if a correction is being made'
 )
 async def add_donation_cmd(interaction, member: discord.Member, date: str, donation: int, note: Optional[str]):
-    if interaction.user.guild_permissions.administrator:
-        txid = str(get_next_donation_TXID())
-        points_delta = calculate_points_from_donation(donation)
-        discord_id_receiver = str(member.id)
-        validated_input = valid_command_admin(discord_id_receiver, interaction.user, date, points_delta, donation)
+    txid = str(get_next_donation_TXID())
+    points_delta = calculate_points_from_donation(donation)
+    discord_id_receiver = str(member.id)
+    validated_input = valid_command_admin(discord_id_receiver, interaction.user, date, points_delta, donation)
 
-        if validated_input == "0":
-            printd("Command validated, connecting to DB.")
-            db = sql.connect('alonezone_points.db')
-            cursor = db.cursor()
-            # Add the donation to the donation history table
-            cursor.execute("INSERT INTO donations VALUES(" + txid + ", " + discord_id_receiver + ", '" + interaction.user.name + "', '" + date + "', " + str(donation) + ", " + str(points_delta) + ", " + "-1" + ", '" + str(note) + "')")
-            db.commit()
-            printd("Inserted data into donations table.")
-            # Update the member table with the donors new point total
-            cursor.execute("UPDATE members SET current_points = " + str(get_user_points(discord_id_receiver) + points_delta) + " WHERE discord_id_receiver='" + discord_id_receiver + "'")
-            db.commit()
-            printd("Updated data in the members table.")
-            # Be a good dev and do your own gc
-            cursor.close()
-            db.close()
-            await interaction.response.send_message("Successfully added donation of " + str(donation) + "gp from " + str(member.name) + ", awarding " + str(points_delta) + " points.", allowed_mentions=allowed, ephemeral=silent_response)
-        else:
-            await interaction.response.send_message(validated_input, allowed_mentions=allowed, ephemeral=silent_response)
+    if validated_input == "0":
+        printd("Command validated, connecting to DB.")
+        db = sql.connect('alonezone_points.db')
+        cursor = db.cursor()
+        # Add the donation to the donation history table
+        cursor.execute("INSERT INTO donations VALUES(" + txid + ", " + discord_id_receiver + ", '" + interaction.user.name + "', '" + date + "', " + str(donation) + ", " + str(points_delta) + ", " + "-1" + ", '" + str(note) + "')")
+        db.commit()
+        printd("Inserted data into donations table.")
+        # Update the member table with the donors new point total
+        cursor.execute("UPDATE members SET current_points = " + str(get_user_points(discord_id_receiver) + points_delta) + " WHERE discord_id_receiver='" + discord_id_receiver + "'")
+        db.commit()
+        printd("Updated data in the members table.")
+        # Be a good dev and do your own gc
+        cursor.close()
+        db.close()
+        await interaction.response.send_message("Successfully added donation of " + str(donation) + "gp from " + str(member.name) + ", awarding " + str(points_delta) + " points.", allowed_mentions=allowed, ephemeral=silent_response)
     else:
-        await interaction.response.send_message("Sorry, this command is only available to Administrators.", allowed_mentions=allowed, ephemeral=silent_response)
+        await interaction.response.send_message(validated_input, allowed_mentions=allowed, ephemeral=silent_response)
 
 
 # 2 Lets an admin remove points from a member
 @bot.command(name="remove_points", description="Allows an admin to remove points from a member.", guild=discord.Object(id=guild))
-# @app_commands.checks.has_permissions(administrator=True)
+@app_commands.checks.has_permissions(administrator=True)
 @app_commands.describe(
     member='The discord ID of the member to remove points from.',
     points_to_remove='The amount of points to remove.',
     note='Explain why you are removing points from this member.'
 )
 async def remove_points_cmd(interaction, member: discord.Member, points_to_remove: int, note: str):
-    if interaction.user.guild_permissions.administrator:
-        txid = str(get_next_donation_TXID())
-        points_delta = (abs(points_to_remove) * -1)
-        printd("Points to be removed: " + str(points_delta))
-        donation = str(0)
-        discord_id_receiver = str(member.id)
-        date = str(datetime.today().strftime('%Y-%m-%d'))
+    txid = str(get_next_donation_TXID())
+    points_delta = (abs(points_to_remove) * -1)
+    printd("Points to be removed: " + str(points_delta))
+    donation = str(0)
+    discord_id_receiver = str(member.id)
+    date = str(datetime.today().strftime('%Y-%m-%d'))
 
-        # Make sure all of the input data is valid before injecting it into the database
-        validated_input = valid_command_admin(discord_id_receiver, interaction.user, date, points_delta, donation)
+    # Make sure all of the input data is valid before injecting it into the database
+    validated_input = valid_command_admin(discord_id_receiver, interaction.user, date, points_delta, donation)
 
-        if points_to_remove != 0:
-            if validated_input == "0":
-                printd("Command validated, connecting to DB.")
-                db = sql.connect('alonezone_points.db')
-                cursor = db.cursor()
-                # Add the "donation" to the donation history table, this will be a "0" GP donation with a negative point value
-                cursor.execute("INSERT INTO donations VALUES(" + txid + ", " + discord_id_receiver + ", '" + interaction.user.name + "', '" + date + "', " + str(donation) + ", " + str(points_delta) + ", " + "-1" + ", '" + str(note) + "')")
-                db.commit()
-                printd("Inserted data into donations table.")
-                # Update the member table with the new point total
-                cursor.execute("UPDATE members SET current_points = " + str(get_user_points(discord_id_receiver) + points_delta) + " WHERE discord_id_receiver='" + discord_id_receiver + "'")
-                db.commit()
-                printd("Updated data in the members table.")
-                # Be a good dev and do your own gc
-                cursor.close()
-                db.close()
-                if abs(points_delta) == 1:
-                    await interaction.response.send_message("Successfully removed " + str(points_delta)[1:] + " point from " + str(member.name) + ", new balance is " + str(get_user_points(discord_id_receiver)) + ".", allowed_mentions=allowed, ephemeral=silent_response)
-                else:
-                    await interaction.response.send_message("Successfully removed " + str(points_delta)[1:] + " points from " + str(member.name) + ", new balance is " + str(get_user_points(discord_id_receiver)) + ".", allowed_mentions=allowed, ephemeral=silent_response)
+    if points_to_remove != 0:
+        if validated_input == "0":
+            printd("Command validated, connecting to DB.")
+            db = sql.connect('alonezone_points.db')
+            cursor = db.cursor()
+            # Add the "donation" to the donation history table, this will be a "0" GP donation with a negative point value
+            cursor.execute("INSERT INTO donations VALUES(" + txid + ", " + discord_id_receiver + ", '" + interaction.user.name + "', '" + date + "', " + str(donation) + ", " + str(points_delta) + ", " + "-1" + ", '" + str(note) + "')")
+            db.commit()
+            printd("Inserted data into donations table.")
+            # Update the member table with the new point total
+            cursor.execute("UPDATE members SET current_points = " + str(get_user_points(discord_id_receiver) + points_delta) + " WHERE discord_id_receiver='" + discord_id_receiver + "'")
+            db.commit()
+            printd("Updated data in the members table.")
+            # Be a good dev and do your own gc
+            cursor.close()
+            db.close()
+            if abs(points_delta) == 1:
+                await interaction.response.send_message("Successfully removed " + str(points_delta)[1:] + " point from " + str(member.name) + ", new balance is " + str(get_user_points(discord_id_receiver)) + ".", allowed_mentions=allowed, ephemeral=silent_response)
             else:
-                await interaction.response.send_message(validated_input, allowed_mentions=allowed, ephemeral=silent_response)
+                await interaction.response.send_message("Successfully removed " + str(points_delta)[1:] + " points from " + str(member.name) + ", new balance is " + str(get_user_points(discord_id_receiver)) + ".", allowed_mentions=allowed, ephemeral=silent_response)
         else:
-            await interaction.response.send_message("Cannot remove 0 points!", allowed_mentions=allowed, ephemeral=silent_response)
+            await interaction.response.send_message(validated_input, allowed_mentions=allowed, ephemeral=silent_response)
     else:
-        await interaction.response.send_message("Sorry, this command is only available to Administrators.", allowed_mentions=allowed, ephemeral=silent_response)
+        await interaction.response.send_message("Cannot remove 0 points!", allowed_mentions=allowed, ephemeral=silent_response)
 
 
 # 3 Lets an admin check the full history of points and donations of a member
 @bot.command(name="all_history", description="Allows an admin to check a members full record.", guild=discord.Object(id=guild))
-# @app_commands.checks.has_permissions(administrator=True)
+@app_commands.checks.has_permissions(administrator=True)
 @app_commands.describe(
     member='The discord tag of the member donating.'
 )
 async def all_history_cmd(interaction, member: discord.Member):
-    if interaction.user.guild_permissions.administrator:
-        db = sql.connect('alonezone_points.db')
-        cursor = db.cursor()
-        result = cursor.execute("SELECT txid, discord_name_admin, date_of_action, donation_amount, points_delta, note FROM donations WHERE discord_id_receiver=" + str(member.id) + " ORDER BY txid")
-        table_data = result.fetchall()
-        headers = ('TXID', 'ADMIN', 'DATE', 'DONATION', 'POINTS', 'NOTE')
-        cursor.close()
-        db.close()
-        await interaction.response.send_message(f"```\n{pretty_outputs(headers, table_data)}\n```", allowed_mentions=allowed, ephemeral=silent_response)
-    else:
-        await interaction.response.send_message("Sorry, this command is only available to Administrators.", allowed_mentions=allowed, ephemeral=silent_response)
+    db = sql.connect('alonezone_points.db')
+    cursor = db.cursor()
+    result = cursor.execute("SELECT txid, discord_name_admin, date_of_action, donation_amount, points_delta, note FROM donations WHERE discord_id_receiver=" + str(member.id) + " ORDER BY txid")
+    table_data = result.fetchall()
+    headers = ('TXID', 'ADMIN', 'DATE', 'DONATION', 'POINTS', 'NOTE')
+    cursor.close()
+    db.close()
+    await interaction.response.send_message(f"```\n{pretty_outputs(headers, table_data)}\n```", allowed_mentions=allowed, ephemeral=silent_response)
 
 
 # 4 Lets an admin check the bot version
 @bot.command(name="version", description="Displays the bots version.", guild=discord.Object(id=guild))
-# @app_commands.checks.has_permissions(administrator=True)
+@app_commands.checks.has_permissions(administrator=True)
 async def version(interaction):
-    if interaction.user.guild_permissions.administrator:
-        await interaction.response.send_message("Currenly running: " + clientVersion, allowed_mentions=allowed, ephemeral=silent_response)
-    else:
-        await interaction.response.send_message("Sorry, this command is only available to Administrators.", allowed_mentions=allowed, ephemeral=silent_response)
+    await interaction.response.send_message("Currenly running: " + clientVersion, allowed_mentions=allowed, ephemeral=silent_response)
 
 
 # 5 Lets a specific user send SQL commands directly through discord
@@ -424,18 +412,20 @@ async def version(interaction):
     command='The SQL command to send.',
 )
 async def SQL(interaction, command: str):
-    if interaction.user.guild_permissions.administrator:
-        if (str(interaction.user.id) == str(sql_admin)) | (str(interaction.user.id) == str(interaction.guild.owner.id)):  # ID's are 1 admin and the server owner
-            db = sql.connect('alonezone_points.db')
-            cursor = db.cursor()
-            result = cursor.execute(command)
-            await interaction.response.send_message(result.fetchall(), allowed_mentions=allowed, ephemeral=silent_response)
-            cursor.close()
-            db.close()
+    if (str(interaction.user.id) == str(sql_admin)) | (str(interaction.user.id) == str(interaction.guild.owner.id)):  # ID's are 1 admin and the server owner
+        db = sql.connect('alonezone_points.db')
+        cursor = db.cursor()
+        result = cursor.execute(command)
+        if "DROP TABLE" not in result:
+            if "TRUNCATE TABLE" not in result:
+                if "DELETE" not in result:
+                    await interaction.response.send_message(result.fetchall(), allowed_mentions=allowed, ephemeral=silent_response)
         else:
-            await interaction.response.send_message("Sorry, only Trusted Users:tm: can execute SQL commands!", allowed_mentions=allowed, ephemeral=public_response)
+            await interaction.response.send_message("Sorry, the \"DROP TABLE\", \"TRUNCATE TABLE\", and \"DELETE\" commands are not available via discord command.", allowed_mentions=allowed, ephemeral=silent_response)
+        cursor.close()
+        db.close()
     else:
-        await interaction.response.send_message("Sorry, this command is only available to certain Administrators.", allowed_mentions=allowed, ephemeral=silent_response)
+        await interaction.response.send_message("Sorry, only Trusted Users:tm: can execute SQL commands!", allowed_mentions=allowed, ephemeral=public_response)
 
 
 # ============================================================
@@ -584,10 +574,10 @@ def can_claim_reward(discord_id_receiver, reward_id):
     # We need to check if the reward has a pre-requisite
     # 0 means none; >0 means it requires the returned reward ID
     pre_req = int(get_reward_pre_reqs(reward_id))
-    if pre_req == 0:
+    if int(pre_req) == 0:
         printd("Reward has no pre-requsites")
     else:
-        printd("Reward id " + str(reward_id) + " requires reward id " + str(pre_req) + " to purchase..")
+        printd("Reward ID " + str(reward_id) + " requires reward id " + str(pre_req) + " to purchase..")
 
         # ADD HANDLES FOR EACH REWARD WITH PRE-REQS HERE
         # Reward ID 3 - Requires reward ID 2
@@ -603,34 +593,38 @@ def can_claim_reward(discord_id_receiver, reward_id):
             db.close()
             return "Unable to claim reward!\nYou must have unlocked \"Permanent Discord Role with Custom Name (ID 2)\" before you can unlock a Role Icon or change the color."
 
-    printd("Reward has no pre-requsite or has one and the player meets that requirement.")
+    printd("The player meets that requirements to claim the reward.")
     cursor = db.cursor()
     cursor.execute("SELECT reward_id FROM donations WHERE discord_id_receiver=" + str(discord_id_receiver))
 
-# TODO This check seems to be broken. You can claim all rewards multiple times.
-    # We need to check if the member has claimed the same reward ID before
-    for row in cursor:
-        printd(("priting row data: " + str(row)) + " // " + str(row == int(reward_id)))
-        if row == int(reward_id):
-            printd("Member has claimed reward id " + str(reward_id) + " before.")
+    result = str(cursor.fetchall())
+    printd("List of all claimed rewards: " + str(result))
+    printd("Is reward ID in list: " + str("(" + str(reward_id) + ",)" in result))
 
-            # We need to check the maximum number of times that reward ID can be claimed
-            # ADD HANDLES FOR EACH REWARD WHICH CANNOT BE CLAIMED MULTIPLE TIMES
-            if int(reward_id) == 2:
-                printd("Cannot claim reward id 2 multiple times.")
-                cursor.close()
-                db.close()
-                return "Cannot claim a permanent discord and clan role multiple times!"
-            else:
-                printd("Playes can claim reward id " + str(reward_id) + " multiple times.")
-                cursor.close()
-                db.close()
-                return "0"
+    # ###EXTRA CODE WILL NEED TO BE WRITTEN TO SUPPORT CLAIMING A REWARD X TIMES
+    # ###I DONT WANT OR NEED TO DO THAT RIGHT NOW
+
+    # We need to check if the member has claimed the same reward ID before
+    if str("(" + str(reward_id) + ",)") in result:
+        printd("Found reward ID " + str(reward_id) + " in user claim history..")
+
+        # We need to check the maximum number of times that reward ID can be claimed
+        # ADD HANDLES FOR EACH REWARD WHICH CANNOT BE CLAIMED MULTIPLE TIMES
+        if int(reward_id) == 2:
+            printd("Cannot claim reward ID 2 multiple times.")
+            cursor.close()
+            db.close()
+            return "Cannot claim \"Permanent Discord and Clan Role\" multiple times!"
         else:
-            printd("Member has not claimed reward id " + str(reward_id) + " before.")
+            printd("Playes can claim reward ID " + str(reward_id) + " multiple times.")
             cursor.close()
             db.close()
             return "0"
+    else:
+        printd("Member has not claimed reward ID " + str(reward_id) + " before.")
+        cursor.close()
+        db.close()
+        return "0"
 
 
 # ============================================================
