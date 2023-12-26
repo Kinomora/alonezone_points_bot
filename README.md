@@ -37,17 +37,22 @@ This discord bot will help alleviate the issue of keeping the coffer stocked by 
 * `/donation_history` **Allows a member to view their donation histroy.**
 
 ## HOW TO MODIFY TO FIT YOUR NEEDS
-First you will need [to get a discord bot token](https://www.writebots.com/discord-bot-token/).
-Download `points_bot.py` and edit the file as described below.
+1.) First you will need [to get a discord bot token](https://www.writebots.com/discord-bot-token/).
 
-Invite the bot to your server, go to server settings, Integrations, Bots and Apps, then click this bot in the menu.
+2.) Download `points_bot.py` and edit the file as described below.
 
-Click each command and DISABLE the admin commands for `@everyone` and ENABLE them for `@admins`.
+3.) Invite the bot to your server, go to server settings, Integrations, Bots and Apps, then click this bot in the menu.
+
+4.) Click each command and DISABLE the admin commands for `@everyone` and ENABLE them for `@admins`.
 By default every command will be visible to `@everyone` you will not need to add overrides for the rest.
 
-Variables to edit:
+5.) Variables to edit:
 * Line 35: Your discord server guild ID
 * Line 36: The channel where claimed reward notifications go, this should be an admin-only bot channel.
 * Line 37: The "SQL admin" is a user who has the Admin role *and* has permssion to execute raw SQL commands, only give this to a user you are SURE knows how to use SQL.
 * Lines 38-41: The multiplier for points per mil and milestone
 * Methods 7-10/Lines 128-172: Various reward mechanisms including cost, name, limits, and pre-reqs.
+
+6.) Next you need to launch the script using some args: `--mode False --ver _loc_a --token <discord bot token>`. The "mode: `False`" enables(True) or disables(False) debug-mode which is mainly for developers but if you're having issues it may help you identify them. "-ver `_loc_a`" can be changed to any string, it simply appeds that to the version when printed using `/version`, it's useful if you chose to run the bot on a remote server but dont remember where. Of course, `<discord bot token>` will be the token given to you by discord. in step 1
+
+7.) Test the bot using various commands to give points and claim rewards.
