@@ -35,8 +35,12 @@ allowed = discord.AllowedMentions.all()
 guild = 991568104687681577
 admin_channel = 1164655165094244352
 sql_admin = 849674454228271105  # Whoever this user ID is can send raw SQL commands to the server as long as they are also an admin. Set to "0" to disable.
+hundred_mil_bonus = 7  # Default 15 - bonus points per 100mil
+twenty_five_mil_bonus = 4  # Default 5 - bonus points per 25 mil
+ten_mil_bonus = 3  # Default 3 - bonus points per 10 mil
+mil_points = 1  # Default 1 - points per mil
 clientVersion = "Version 1.0" + args.ver
-database = 'alonezone_points.db'
+database = 'clan_points.db'
 if args.mode == "True":
     devMode = True
 else:
@@ -65,18 +69,22 @@ def printd(var):
 # 3 CALCULATE POINTS
 def validate_point_from_donation(donation_amount, points_delta):
     # Dont trust anyone to do basic math
+    # Bonus points are awared for passing thresholds plus the standard point-per-mil (default 1 ppm)
+    # Points cannot count for more than 1 threshold, ie, 100m points doesn't give 7*1(100m) + 4*4(25m) + 3*10(10m), it only gives 107 points)
     # Divide by 100, result x 15 (each 100m gets 15 bonus points)
     # Modulus of previous calculation divide by 25, result x 7 (each 25m gets 7 bonus points)
     # Modulus of previous calculation added to result
     # Return total points
-    # examples:
-    # 7m = 7 points (1 * 7)
-    # 30m = 37 points (1 * 30 /+/ 1 * 7(25m))
-    # 155m = 184 points (1 * 155 /+/ 2 * 7(25m) /+/ 1 * 15(100m))
-    hundred_points = int(donation_amount / 100000000)
-    twenty_five_points = int((donation_amount % 100000000) / 25000000)
-    ones_points = int(donation_amount / 1000000)
-    total_points = (hundred_points * 15) + (twenty_five_points * 7) + ones_points
+    mils = int(donation_amount / 1000000)  # converting mils donated into single digits for easier math
+    hundred_points = int(mils / 100)
+    printd("Member gets " + str(hundred_points) + " bonus 100 mil points.")
+    twenty_five_points = int((mils % 100) / 25)
+    printd("Member gets " + str(twenty_five_points) + " bonus 25 mil points.")
+    ten_points = int(((mils % 100) % 25) / 10)
+    printd("Member gets " + str(ten_points) + " bonus 10 mil points.")
+    ones_points = int(mils * mil_points)
+    total_points = (hundred_points * hundred_mil_bonus) + (twenty_five_points * twenty_five_mil_bonus) + (ten_points * ten_mil_bonus) + ones_points
+    printd("Member gets " + str(total_points) + " points.")
     if int(total_points) == int(points_delta):
         return True
     else:
@@ -91,7 +99,7 @@ def calculate_points_from_donation(donation_amount):
     # printd("How many bonus points for 25 million: " + str(twenty_five_points))
     ones_points = int(donation_amount / 1000000)
     # printd("How many additional points for per million: " + str(ones_points))
-    total_points = (hundred_points * 15) + (twenty_five_points * 7) + ones_points
+    total_points = (hundred_points * hundred_mil_bonus) + (twenty_five_points * twenty_five_mil_bonus) + ones_points
     printd("Total points: " + str(total_points))
     return total_points
 
@@ -169,7 +177,7 @@ def get_reward_pre_reqs(reward_id):
 # ============================================================
 #
 # 1 CREATE THE DATABASES
-db_main = sql.connect('alonezone_points.db')
+db_main = sql.connect('clan_points.db')
 cursor_main = db_main.cursor()
 result_main = [0]
 try:
@@ -215,7 +223,7 @@ async def points_cmd(interaction):
 # 2 Lets the user check their donation history
 @bot.command(name="donation_history", description="Allows a member to check their donation history.", guild=discord.Object(id=guild))
 async def donation_history_cmd(interaction):
-    db = sql.connect('alonezone_points.db')
+    db = sql.connect('clan_points.db')
     cursor = db.cursor()
     result = cursor.execute("SELECT date_of_action, donation_amount FROM donations WHERE discord_id_receiver=" + str(interaction.user.id) + " AND donation_amount >0 ORDER BY txid")
     table_data = result.fetchall()
@@ -228,7 +236,7 @@ async def donation_history_cmd(interaction):
 # 3 Lets the user check their point history
 @bot.command(name="point_history", description="Allows a member to check their point history.", guild=discord.Object(id=guild))
 async def point_history_cmd(interaction):
-    db = sql.connect('alonezone_points.db')
+    db = sql.connect('clan_points.db')
     cursor = db.cursor()
     result = cursor.execute("SELECT date_of_action, points_delta FROM donations WHERE discord_id_receiver=" + str(interaction.user.id) + " AND points_delta != 0 ORDER BY txid")
     table_data = result.fetchall()
@@ -256,7 +264,7 @@ async def claim_reward_cmd(interaction, reward_id: int):
     if points_delta != 0:
         if validated_input == "0":
             printd("Command validated, connecting to DB.")
-            db = sql.connect('alonezone_points.db')
+            db = sql.connect('clan_points.db')
             cursor = db.cursor()
             # Add the "donation" to the donation history table, this will be a "0" GP donation with a negative point value
             cursor.execute("INSERT INTO donations VALUES(" + txid + ", " + discord_id_receiver + ", '" + interaction.user.name + "', '" + date + "', " + str(donation) + ", " + str(points_delta) + ", " + str(reward_id) + ", '" + str(note) + "')")
@@ -317,7 +325,7 @@ async def add_donation_cmd(interaction, member: discord.Member, date: str, donat
 
     if validated_input == "0":
         printd("Command validated, connecting to DB.")
-        db = sql.connect('alonezone_points.db')
+        db = sql.connect('clan_points.db')
         cursor = db.cursor()
         # Add the donation to the donation history table
         cursor.execute("INSERT INTO donations VALUES(" + txid + ", " + discord_id_receiver + ", '" + interaction.user.name + "', '" + date + "', " + str(donation) + ", " + str(points_delta) + ", " + "-1" + ", '" + str(note) + "')")
@@ -357,7 +365,7 @@ async def remove_points_cmd(interaction, member: discord.Member, points_to_remov
     if points_to_remove != 0:
         if validated_input == "0":
             printd("Command validated, connecting to DB.")
-            db = sql.connect('alonezone_points.db')
+            db = sql.connect('clan_points.db')
             cursor = db.cursor()
             # Add the "donation" to the donation history table, this will be a "0" GP donation with a negative point value
             cursor.execute("INSERT INTO donations VALUES(" + txid + ", " + discord_id_receiver + ", '" + interaction.user.name + "', '" + date + "', " + str(donation) + ", " + str(points_delta) + ", " + "-1" + ", '" + str(note) + "')")
@@ -387,7 +395,7 @@ async def remove_points_cmd(interaction, member: discord.Member, points_to_remov
     member='The discord tag of the member donating.'
 )
 async def all_history_cmd(interaction, member: discord.Member):
-    db = sql.connect('alonezone_points.db')
+    db = sql.connect('clan_points.db')
     cursor = db.cursor()
     result = cursor.execute("SELECT txid, discord_name_admin, date_of_action, donation_amount, points_delta, note FROM donations WHERE discord_id_receiver=" + str(member.id) + " ORDER BY txid")
     table_data = result.fetchall()
@@ -413,7 +421,7 @@ async def version(interaction):
 )
 async def SQL(interaction, command: str):
     if (str(interaction.user.id) == str(sql_admin)) | (str(interaction.user.id) == str(interaction.guild.owner.id)):  # ID's are 1 admin and the server owner
-        db = sql.connect('alonezone_points.db')
+        db = sql.connect('clan_points.db')
         cursor = db.cursor()
         result = cursor.execute(command)
         if "DROP TABLE" not in result:
@@ -434,7 +442,7 @@ async def SQL(interaction, command: str):
 #
 # 1 Check the member database to see if they exist
 def member_exists(discord_id_receiver):
-    db = sql.connect('alonezone_points.db')
+    db = sql.connect('clan_points.db')
     cursor = db.cursor()
     result = cursor.execute("SELECT discord_id_receiver FROM members WHERE discord_id_receiver='" + str(discord_id_receiver) + "'")
     output = not result.fetchone() is None
@@ -447,7 +455,7 @@ def member_exists(discord_id_receiver):
 def create_member(discord_id_receiver, points_delta):
     if valid_points_delta(discord_id_receiver, points_delta):
         if not member_exists(discord_id_receiver):
-            db = sql.connect('alonezone_points.db')
+            db = sql.connect('clan_points.db')
             cursor = db.cursor()
             cursor.execute("INSERT INTO members VALUES('" + str(discord_id_receiver) + "', " + str(points_delta) + ")")
             db.commit()
@@ -462,7 +470,7 @@ def create_member(discord_id_receiver, points_delta):
 
 # 3 Returns the next TXID for proper record keeping
 def get_next_donation_TXID():
-    db = sql.connect('alonezone_points.db')
+    db = sql.connect('clan_points.db')
     cursor = db.cursor()
     result = cursor.execute("SELECT * FROM donations")
     rows = len(result.fetchall())
@@ -499,7 +507,7 @@ def valid_points_delta(discord_id_receiver, points_delta):
 def get_user_points(discord_id_receiver):
     if not member_exists(discord_id_receiver):
         create_member(discord_id_receiver, 0)
-    db = sql.connect('alonezone_points.db')
+    db = sql.connect('clan_points.db')
     cursor = db.cursor()
     printd("Point receiver ID: " + str(discord_id_receiver))
     result = cursor.execute("SELECT current_points FROM members WHERE discord_id_receiver='" + discord_id_receiver + "'")
@@ -569,7 +577,7 @@ def can_claim_reward(discord_id_receiver, reward_id):
     printd("Validating reward claim history..")
 
     # Database opening
-    db = sql.connect('alonezone_points.db')
+    db = sql.connect('clan_points.db')
 
     # We need to check if the reward has a pre-requisite
     # 0 means none; >0 means it requires the returned reward ID

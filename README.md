@@ -1,1 +1,53 @@
-HOW TO
+# OSRS CLAN DISCORD BOT
+The purpose of this bot is to help clans grow and mantain a clan coffer in order to encourage growth of the community.
+
+*talk about the benefits of clan events
+
+*talk about the trouble with getting donations
+
+*reiterate the purpose and the effect this bot will have resolving the 2 identifed issues
+
+# COMMANDS
+## Admin Commands
+* `/add_donation <user> <date> <int> [note]` **Adds a donation to the record of a member.**
+  * `<user>` Must be a valid discord user. If donator is not in discord, they cannot claim rewards.
+  * `<date>` Must be formated as YYYY-MM-DD. Ie, for December 25th 2023 you'd type `2023-12-25`
+  * `<int>` The amount of GP donated. More GP at once = higher point multiplier
+  * `[note]` An optional note an admin can add for any reason.
+* `/remove_points <user> <int> <note>` **Removes points from a member's account.**
+  * `<user>` Must be a valid discord user.
+  * `<int>` The number of points to remove
+  * `<note>` When removing points, a "reason" note must be added.
+* `/all_history <user>` **Allows an admin to view a members full donation and point history including notes.**
+  * `<user>` Must be a valid discord user.
+* `/version` **Allows an admin to check the current version of the bot. Can also include custom info, see `lauch args` below.**
+* `/sql <text>` **Allows certain admins to execute SQL commands directly through a discord message.**
+  * **INCREDIBLY DANGEROUS COMMAND**
+  * Delete, Truncate, and Drop are disabled for security
+  * Only the server owner and 1 admin, as specified on line 37, may use this command
+  * `<text>` The SQL command as you would type into a console.
+
+## User commands
+* `/points` **Allows a member to check their current point total.**
+* `/bonuses` **Allows a member to see current donation bonuses.**
+* `/rewards` **Displays all current rewards w/ IDs.**
+* `/claim_reward <int>` **Allows a member to claim a reward by spending points.**
+  * `<int>` The ID of the reward the member wants to claim, see `/rewards`
+* `/point_history` **Allows a member to view their point earning and spending history.**
+* `/donation_history` **Allows a member to view their donation histroy.**
+
+## HOW TO MODIFY TO FIT YOUR NEEDS
+First you will need [to get a discord bot token](https://www.writebots.com/discord-bot-token/).
+Download `points_bot.py` and edit the file as described below.
+
+Invite the bot to your server, go to server settings, Integrations, Bots and Apps, then click this bot in the menu.
+
+Click each command and DISABLE the admin commands for `@everyone` and ENABLE them for `@admins`.
+By default every command will be visible to `@everyone` you will not need to add overrides for the rest.
+
+Variables to edit:
+* Line 35: Your discord server guild ID
+* Line 36: The channel where claimed reward notifications go, this should be an admin-only bot channel.
+* Line 37: The "SQL admin" is a user who has the Admin role *and* has permssion to execute raw SQL commands, only give this to a user you are SURE knows how to use SQL.
+* Lines 38-41: The multiplier for points per mil and milestone
+* Methods 7-10/Lines 128-172: Various reward mechanisms including cost, name, limits, and pre-reqs.
