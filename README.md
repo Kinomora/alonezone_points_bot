@@ -1,11 +1,11 @@
 # OSRS CLAN DISCORD BOT
 The purpose of this bot is to help clans grow and mantain a clan coffer in order to encourage growth of the community.
 
-*talk about the benefits of clan events
+Clan events can help grow a clans size more rapidly than waiting for organic growth, even with the help of a community figure like a streamer or a youtuber. They can help bring clanmates together and create long-lasting friendships as well as encourage personal account growth and progress.
 
-*talk about the trouble with getting donations
+Clan events with rewards draw larger crowds and more participation as well as competiton, however, without incentives it can be difficult to keep a well-stocked coffer for small and medium sized clans- some large clans even have issues with this problem.
 
-*reiterate the purpose and the effect this bot will have resolving the 2 identifed issues
+This discord bot will help alleviate the issue of keeping the coffer stocked by rewarding players who donate GP to the clan while giving something back that could be coveted such as a discord role, an in-game clan role, or directorship of the next event.
 
 # COMMANDS
 ## Admin Commands
