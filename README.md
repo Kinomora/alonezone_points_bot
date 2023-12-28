@@ -21,11 +21,6 @@ This discord bot will help alleviate the issue of keeping the coffer stocked by 
 * `/all_history <user>` **Allows an admin to view a members full donation and point history including notes.**
   * `<user>` Must be a valid discord user.
 * `/version` **Allows an admin to check the current version of the bot. Can also include custom info, see `lauch args` below.**
-* `/sql <text>` **Allows certain admins to execute SQL commands directly through a discord message.**
-  * **INCREDIBLY DANGEROUS COMMAND**
-  * Delete, Truncate, and Drop are disabled for security
-  * Only the server owner and 1 admin, as specified on line 37, may use this command
-  * `<text>` The SQL command as you would type into a console.
 
 ## User commands
 * `/points` **Allows a member to check their current point total.**
@@ -47,11 +42,11 @@ This discord bot will help alleviate the issue of keeping the coffer stocked by 
 By default every command will be visible to `@everyone` you will not need to add overrides for the rest.
 
 5.) Variables to edit:
-* Line 35: Your discord server guild ID
-* Line 36: The channel where claimed reward notifications go, this should be an admin-only bot channel.
-* Line 37: The "SQL admin" is a user who has the Admin role *and* has permssion to execute raw SQL commands, only give this to a user you are SURE knows how to use SQL.
-* Lines 38-41: The multiplier for points per mil and milestone
-* Methods 7-10/Lines 128-172: Various reward mechanisms including cost, name, limits, and pre-reqs.
+* Line 38: Your discord server guild ID
+* Line 39: The channel where claimed reward notifications go, this should be an admin-only bot channel.
+* Lines 40-43: The multiplier for points per mil and milestone
+* Line 44: The number of results to return per-page on message such as point and donatation histories.
+* Methods a7-a10/Lines 133-178: Various reward mechanisms including cost, name, limits, and pre-reqs.
 
 6.) Next you need to launch the script using some args: `--mode False --ver _loc_a --token <discord bot token>`. The "mode: `False`" enables(True) or disables(False) debug-mode which is mainly for developers but if you're having issues it may help you identify them. "-ver `_loc_a`" can be changed to any string, it simply appeds that to the version when printed using `/version`, it's useful if you chose to run the bot on a remote server but dont remember where. Of course, `<discord bot token>` will be the token given to you by discord. in step 1
 

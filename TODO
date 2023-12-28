@@ -16,11 +16,9 @@
 ✔ Remove points from users
 ✔ Check full history of user interactions
 ✔ Check the bot version
-✔ Secure the SQL injection command
 
-Debug/Fix:
-Process messages exceeding 2000 characters
-Add required note for claiming role so admins can do it quickly
+Debug:
+Fix users probing for history with no history, cmd does not respond but no err in console
 
 
 Future?:
@@ -28,3 +26,4 @@ Support google sheets exporting
 Support multiple pre-reqs for rewards
 Support claiming a reward only X times
 Support rewards with time locks (ie once a month)
+Possibly maybe re-add the SQL command???

@@ -3,6 +3,8 @@
 # =FOR USE IN ALONESCAPE'S DISCORD SERVER=====================
 # =LICENSED UNDER THE MIT LICENSE=============================
 # ============================================================
+import math
+
 import discord
 import argparse
 import sqlite3 as sql
@@ -11,9 +13,10 @@ from discord import app_commands
 from typing import Optional
 from datetime import datetime
 from prettytable import *
+from pagination import Pagination
 
 # lets me use arguments in the commandline to set developer mode in the IDE without having to toggle it every time
-parser = argparse.ArgumentParser(description='sets developer mode')
+parser = argparse.ArgumentParser(description='Various required arguments in order to launch the software')
 parser.add_argument('--mode', action="store", dest='mode', default="False")
 parser.add_argument('--ver', action="store", dest='ver', default="")
 parser.add_argument('--token', action="store", dest='token', default="")
@@ -34,11 +37,11 @@ allowed = discord.AllowedMentions.all()
 # ============================================================
 guild = 991568104687681577
 admin_channel = 1164655165094244352
-sql_admin = 849674454228271105  # Whoever this user ID is can send raw SQL commands to the server as long as they are also an admin. Set to "0" to disable.
 hundred_mil_bonus = 7  # Default 15 - bonus points per 100mil
 twenty_five_mil_bonus = 4  # Default 5 - bonus points per 25 mil
 ten_mil_bonus = 3  # Default 3 - bonus points per 10 mil
 mil_points = 1  # Default 1 - points per mil
+entries_per_page = 10  # Set the number of records per discord message (pagination for long point and donation histories)
 clientVersion = "Version 1.0" + args.ver
 database = 'clan_points.db'
 if args.mode == "True":
@@ -51,22 +54,22 @@ else:
 # =DATA PROCESSING METHODS====================================
 # ============================================================
 #
-# 1 Convert arbitrary table sizes into pretty outputs
-def pretty_outputs(headers, string):
+# a1 Convert arbitrary table sizes into pretty outputs
+def pretty_outputs(headers, table_input):
     table = PrettyTable(headers)
-    table.add_rows(string)
+    table.add_rows(table_input)
     table.align = "l"
     table.set_style(DOUBLE_BORDER)
     return table
 
 
-# 2 Custom print method conditional on dev mode
+# a2 Custom print method conditional on dev mode
 def printd(var):
     if devMode:
         print(str(var))
 
 
-# 3 CALCULATE POINTS
+# a3 CALCULATE POINTS
 def validate_point_from_donation(donation_amount, points_delta):
     # Dont trust anyone to do basic math
     # Bonus points are awared for passing thresholds plus the standard point-per-mil (default 1 ppm)
@@ -91,20 +94,23 @@ def validate_point_from_donation(donation_amount, points_delta):
         return False
 
 
-# 4 Calculate a points value given the donation amount
+# a4 Calculate a points value given the donation amount
 def calculate_points_from_donation(donation_amount):
     hundred_points = int(donation_amount / 100000000)
     # printd("How many bonus points for 100 million: " + str(hundred_points))
+
     twenty_five_points = int((donation_amount % 100000000) / 25000000)
     # printd("How many bonus points for 25 million: " + str(twenty_five_points))
+
     ones_points = int(donation_amount / 1000000)
     # printd("How many additional points for per million: " + str(ones_points))
+
     total_points = (hundred_points * hundred_mil_bonus) + (twenty_five_points * twenty_five_mil_bonus) + ones_points
     printd("Total points: " + str(total_points))
     return total_points
 
 
-# 5 VALIDATE COMMAND USER
+# a5 VALIDATE COMMAND USER
 def admin_abuse(discord_id_receiver, discord_admin_id):
     if int(discord_id_receiver) == int(discord_admin_id):
         return True
@@ -112,7 +118,7 @@ def admin_abuse(discord_id_receiver, discord_admin_id):
         return False
 
 
-# 6 DATE MANAGER
+# a6 DATE MANAGER
 def valid_date(date_string):
     # Date must be provided in 'YYYY-MM-DD' format
     printd(str(date_string))
@@ -124,19 +130,19 @@ def valid_date(date_string):
     return True
 
 
-# 7 REWARD COSTS
+# a7 REWARD COSTS
 def get_reward_cost(reward):
     switcher = {
-        1: 75,   # 3-month temporary in-game icon
+        1: 75,  # 3-month temporary in-game icon
         2: 200,  # Permanent icon and discord role
-        3: 50,   # Discord role change or icon unlock
+        3: 50,  # Discord role change or icon unlock
         4: 275,  # Custom SOTW
         5: 400,  # Custom event (non-SOTW)
     }
     return switcher.get(reward, 0)
 
 
-# 8 REWARD NAMES
+# a8 REWARD NAMES
 def get_reward_name(reward_id):
     switcher = {
         1: "3-month temporary in-game icon",
@@ -148,7 +154,7 @@ def get_reward_name(reward_id):
     return switcher.get(reward_id, 0)
 
 
-# 9 REWARD LIMITS
+# a9 REWARD LIMITS
 def get_reward_limits(reward_id):
     switcher = {
         1: 0,  # Members can get a temporary icon unlimited times
@@ -160,7 +166,7 @@ def get_reward_limits(reward_id):
     return switcher.get(reward_id, 0)
 
 
-# 10 REWARD PRE-REQUSITES
+# a10 REWARD PRE-REQUSITES
 def get_reward_pre_reqs(reward_id):
     switcher = {
         1: 0,  # Temp icon has no pre-reqs
@@ -186,7 +192,7 @@ try:
 except Exception as e:
     printd(e)
 try:
-    cursor_main.execute("CREATE TABLE donations(txid type PRIMARY KEY, discord_id_receiver, discord_name_admin, date_of_action, donation_amount, points_delta, reward_id, note)")
+    cursor_main.execute("CREATE TABLE donations(txid type PRIMARY KEY, discord_id_receiver, discord_name_interaction, date_of_action, donation_amount, points_delta, reward_id, note)")
     printd("Table 'donations' created successfully.")
 except Exception as e:
     printd(e)
@@ -215,9 +221,9 @@ async def points_cmd(interaction):
     points = get_user_points(str(interaction.user.id))
 
     if abs(points) == 1:
-        await interaction.response.send_message("You have " + str(points) + " point!", allowed_mentions=allowed, ephemeral=public_response)
+        await interaction.response.send_message("You have " + str(points) + " point!", allowed_mentions=allowed, ephemeral=silent_response)
     else:
-        await interaction.response.send_message("You have " + str(points) + " points!", allowed_mentions=allowed, ephemeral=public_response)
+        await interaction.response.send_message("You have " + str(points) + " points!", allowed_mentions=allowed, ephemeral=silent_response)
 
 
 # 2 Lets the user check their donation history
@@ -227,10 +233,38 @@ async def donation_history_cmd(interaction):
     cursor = db.cursor()
     result = cursor.execute("SELECT date_of_action, donation_amount FROM donations WHERE discord_id_receiver=" + str(interaction.user.id) + " AND donation_amount >0 ORDER BY txid")
     table_data = result.fetchall()
+    # printd("Table data: " + str(table_data))
     headers = ('DATE', 'DONATION')
     cursor.close()
     db.close()
-    await interaction.response.send_message(f"```\n{pretty_outputs(headers, table_data)}\n```", allowed_mentions=allowed, ephemeral=public_response)
+
+    async def get_page(page: int):
+        emb = discord.Embed(title="Donation History for " + str(interaction.user.name), description="")
+        offset = (page - 1) * entries_per_page
+        # printd("Offset: " + str(offset))
+        table_data_printing = []
+        index = 0
+        for record in table_data:
+            # printd(record)
+            # if the record is equal to or below max of the current page amount, then...
+            if index < (offset + entries_per_page):
+                # if the record is greater than the start of the current page amount, then...
+                if index >= offset:
+                    # This record is between 0 and entries_per_page offset by the page number(* e_p_p)
+                    # Ex, 10 e_p_p, page 1, this adds records 0-9
+                    table_data_printing.append(record)
+            index += 1
+
+        formatted_table_data = pretty_outputs(headers, table_data_printing)
+        # printd("Output: \n" + str(formatted_table_data))
+
+        emb.description = f"```{formatted_table_data}```\n"
+        pages = math.ceil(len(table_data) / entries_per_page)  # Pagination.compute_total_pages(len(table_data), entries_per_page)
+        # printd("Total entries: " + str(len(table_data)) + " | Total pages: " + str(pages))
+        emb.set_footer(text=f"Page {page} of {pages}")
+        return emb, pages
+
+    await Pagination(interaction, get_page).navigate()
 
 
 # 3 Lets the user check their point history
@@ -243,13 +277,45 @@ async def point_history_cmd(interaction):
     headers = ('DATE', 'POINTS')
     cursor.close()
     db.close()
-    await interaction.response.send_message(f"```\n{pretty_outputs(headers, table_data)}\n```", allowed_mentions=allowed, ephemeral=public_response)
+
+    # await interaction.response.send_message(f"```\n{pretty_outputs(headers, table_data)}\n```", allowed_mentions=allowed, ephemeral=silent_response)
+
+    async def get_page(page: int):
+        emb = discord.Embed(title="Point History for " + str(interaction.user.name), description="")
+        offset = (page - 1) * entries_per_page
+        # printd("Offset: " + str(offset))
+        table_data_printing = []
+        index = 0
+        for record in table_data:
+            # printd(record)
+            # if the record is equal to or below max of the current page amount, then...
+            if index < (offset + entries_per_page):
+                # if the record is greater than the start of the current page amount, then...
+                if index >= offset:
+                    # This record is between 0 and entries_per_page offset by the page number(* e_p_p)
+                    # Ex, 10 e_p_p, page 1, this adds records 0-9
+                    table_data_printing.append(record)
+            index += 1
+
+        formatted_table_data = pretty_outputs(headers, table_data_printing)
+        printd("Output: \n" + str(formatted_table_data))
+
+        emb.description = f"```{formatted_table_data}```\n"
+        pages = math.ceil(len(table_data) / entries_per_page)  # Pagination.compute_total_pages(len(table_data), entries_per_page)
+        printd("Total entries: " + str(len(table_data)) + " | Total pages: " + str(pages))
+        emb.set_footer(text=f"Page {page} of {pages}")
+        return emb, pages
+
+    await Pagination(interaction, get_page).navigate()
 
 
 # 4 Lets the user claim a reward with their points
 @bot.command(name="claim_reward", description="Allows a member to claim a reward using points.", guild=discord.Object(id=guild))
-@app_commands.describe(reward_id='The reward number you want to claim. Refer to /rewards for a list', )
-async def claim_reward_cmd(interaction, reward_id: int):
+@app_commands.describe(
+    reward_id='The reward number you want to claim. Refer to /rewards for a list',
+    user_note='A note to the admins regarding your reward. If you are claiming a role or icon, please provide the "#hexnum" and the desired "@RoleName".'
+)
+async def claim_reward_cmd(interaction, reward_id: int, user_note: Optional[str]):
     txid = str(get_next_donation_TXID())
     points_delta = ((get_reward_cost(reward_id)) * -1)
     printd("Points to be removed: " + str(points_delta))
@@ -261,13 +327,14 @@ async def claim_reward_cmd(interaction, reward_id: int):
     # Make sure all of the input data is valid before injecting it into the database
     validated_input = valid_command_user(discord_id_receiver, points_delta, reward_id)
 
+    # Perform the function
     if points_delta != 0:
         if validated_input == "0":
             printd("Command validated, connecting to DB.")
             db = sql.connect('clan_points.db')
             cursor = db.cursor()
             # Add the "donation" to the donation history table, this will be a "0" GP donation with a negative point value
-            cursor.execute("INSERT INTO donations VALUES(" + txid + ", " + discord_id_receiver + ", '" + interaction.user.name + "', '" + date + "', " + str(donation) + ", " + str(points_delta) + ", " + str(reward_id) + ", '" + str(note) + "')")
+            cursor.execute("INSERT INTO donations VALUES(" + txid + ", " + discord_id_receiver + ", 'REWARD CLAIMED', '" + date + "', " + str(donation) + ", " + str(points_delta) + ", " + str(reward_id) + ", '" + str(note) + "')")
             db.commit()
             printd("Inserted data into donations table.")
             # Update the member table with the new point total
@@ -279,19 +346,20 @@ async def claim_reward_cmd(interaction, reward_id: int):
             db.close()
             if abs(points_delta) == 1:
                 await interaction.response.send_message("**Reward claimed!**\n" + str(points_delta)[1:] + " point has been duducted and your new balance is " + str(get_user_points(discord_id_receiver)) + ".\nAn admin has been notified and will deliver your reward shortly.\n",
-                                                        allowed_mentions=allowed, ephemeral=public_response)
+                                                        allowed_mentions=allowed, ephemeral=silent_response)
             else:
                 await interaction.response.send_message("**Reward claimed!**\n" + str(points_delta)[1:] + " points have been duducted and your new balance is " + str(get_user_points(discord_id_receiver)) + ".\nAn admin has been notified and will deliver your reward shortly.\n",
-                                                        allowed_mentions=allowed, ephemeral=public_response)
-                await interaction.guild.get_channel(admin_channel).send("A member has claimed a clan point reward!\n"
-                                                                        "Please refer to the following record and process the reward.\n"
+                                                        allowed_mentions=allowed, ephemeral=silent_response)
+                await interaction.guild.get_channel(admin_channel).send("## A member has claimed a clan point reward!\n"
+                                                                        "*Please refer to the following information and process the reward.*\n\n"
                                                                         "When completed, react to this message to indicate the reward has been processed.\n"
                                                                         "> Member: <@" + str(interaction.user.id) + ">\n"
-                                                                        "> Reward: " + get_reward_name(reward_id))
+                                                                        "> Reward: " + get_reward_name(reward_id) + "\n"
+                                                                        "> User note: " + str(user_note))
         else:
-            await interaction.response.send_message(validated_input, allowed_mentions=allowed, ephemeral=public_response)
+            await interaction.response.send_message(validated_input, allowed_mentions=allowed, ephemeral=silent_response)
     else:
-        await interaction.response.send_message("Invalid reward ID provided! Please check /rewards and make sure you are claiming the correct reward.", allowed_mentions=allowed, ephemeral=public_response)
+        await interaction.response.send_message("Invalid reward ID provided! Please check /rewards and make sure you are claiming the correct reward.", allowed_mentions=allowed, ephemeral=silent_response)
 
 
 # 5 Lets the user see all the rewards available
@@ -302,7 +370,7 @@ async def rewards_cmd(interaction):
                     ('3', '50', 'Discord role icon unlock *OR* change role name/color/icon'),
                     ('4', '275', 'Custom SOTW event - Must be claimed during a SOTW vote period'),
                     ('5', '400', 'Custom non-SOTW event - An admin will message you to discuss details')]
-    await interaction.response.send_message(f"```\n{pretty_outputs(['ID', 'COST', 'DESCRIPTION'], rewards_list)}\n```", allowed_mentions=allowed, ephemeral=public_response)
+    await interaction.response.send_message(f"```\n{pretty_outputs(['ID', 'COST', 'DESCRIPTION'], rewards_list)}\n```", allowed_mentions=allowed, ephemeral=silent_response)
 
 
 # ============================================================
@@ -328,7 +396,7 @@ async def add_donation_cmd(interaction, member: discord.Member, date: str, donat
         db = sql.connect('clan_points.db')
         cursor = db.cursor()
         # Add the donation to the donation history table
-        cursor.execute("INSERT INTO donations VALUES(" + txid + ", " + discord_id_receiver + ", '" + interaction.user.name + "', '" + date + "', " + str(donation) + ", " + str(points_delta) + ", " + "-1" + ", '" + str(note) + "')")
+        cursor.execute("INSERT INTO donations VALUES(" + txid + ", " + discord_id_receiver + ", '" + interaction.user.name[:15] + "', '" + date + "', " + str(donation) + ", " + str(points_delta) + ", " + "-1" + ", '" + str(note) + "')")
         db.commit()
         printd("Inserted data into donations table.")
         # Update the member table with the donors new point total
@@ -368,7 +436,7 @@ async def remove_points_cmd(interaction, member: discord.Member, points_to_remov
             db = sql.connect('clan_points.db')
             cursor = db.cursor()
             # Add the "donation" to the donation history table, this will be a "0" GP donation with a negative point value
-            cursor.execute("INSERT INTO donations VALUES(" + txid + ", " + discord_id_receiver + ", '" + interaction.user.name + "', '" + date + "', " + str(donation) + ", " + str(points_delta) + ", " + "-1" + ", '" + str(note) + "')")
+            cursor.execute("INSERT INTO donations VALUES(" + txid + ", " + discord_id_receiver + ", '" + interaction.user.name[:15] + "', '" + date + "', " + str(donation) + ", " + str(points_delta) + ", " + "-1" + ", '" + str(note) + "')")
             db.commit()
             printd("Inserted data into donations table.")
             # Update the member table with the new point total
@@ -397,12 +465,41 @@ async def remove_points_cmd(interaction, member: discord.Member, points_to_remov
 async def all_history_cmd(interaction, member: discord.Member):
     db = sql.connect('clan_points.db')
     cursor = db.cursor()
-    result = cursor.execute("SELECT txid, discord_name_admin, date_of_action, donation_amount, points_delta, note FROM donations WHERE discord_id_receiver=" + str(member.id) + " ORDER BY txid")
+    result = cursor.execute("SELECT discord_name_interaction, date_of_action, donation_amount, points_delta, note FROM donations WHERE discord_id_receiver=" + str(member.id) + " ORDER BY txid")
     table_data = result.fetchall()
-    headers = ('TXID', 'ADMIN', 'DATE', 'DONATION', 'POINTS', 'NOTE')
+    headers = ('ADMIN or ACTION', 'DATE', 'DONATION', 'POINTS', 'NOTE')
     cursor.close()
     db.close()
-    await interaction.response.send_message(f"```\n{pretty_outputs(headers, table_data)}\n```", allowed_mentions=allowed, ephemeral=silent_response)
+
+    # await interaction.response.send_message(f"```\n{pretty_outputs(headers, table_data)}\n```", allowed_mentions=allowed, ephemeral=silent_response)
+
+    async def get_page(page: int):
+        emb = discord.Embed(title="Point History for " + str(member.name), description="")
+        offset = (page - 1) * entries_per_page
+        # printd("Offset: " + str(offset))
+        table_data_printing = []
+        index = 0
+        for record in table_data:
+            # printd(record)
+            # if the record is equal to or below max of the current page amount, then...
+            if index < (offset + entries_per_page):
+                # if the record is greater than the start of the current page amount, then...
+                if index >= offset:
+                    # This record is between 0 and entries_per_page offset by the page number(* e_p_p)
+                    # Ex, 10 e_p_p, page 1, this adds records 0-9
+                    table_data_printing.append(record)
+            index += 1
+
+        formatted_table_data = pretty_outputs(headers, table_data_printing)
+        printd("Output: \n" + str(formatted_table_data))
+
+        emb.description = f"```{formatted_table_data}```\n"
+        pages = math.ceil(len(table_data) / entries_per_page)  # Pagination.compute_total_pages(len(table_data), entries_per_page)
+        printd("Total entries: " + str(len(table_data)) + " | Total pages: " + str(pages))
+        emb.set_footer(text=f"Page {page} of {pages}")
+        return emb, pages
+
+    await Pagination(interaction, get_page).navigate()
 
 
 # 4 Lets an admin check the bot version
@@ -410,30 +507,6 @@ async def all_history_cmd(interaction, member: discord.Member):
 @app_commands.checks.has_permissions(administrator=True)
 async def version(interaction):
     await interaction.response.send_message("Currenly running: " + clientVersion, allowed_mentions=allowed, ephemeral=silent_response)
-
-
-# 5 Lets a specific user send SQL commands directly through discord
-# THIS IS AN EXTREMELY DANGEROUS COMMAND, DO NOT LET ANYONE USE THIS
-@bot.command(name="sql", description="Sends SQL commands", guild=discord.Object(id=guild))
-@app_commands.checks.has_permissions(administrator=True)
-@app_commands.describe(
-    command='The SQL command to send.',
-)
-async def SQL(interaction, command: str):
-    if (str(interaction.user.id) == str(sql_admin)) | (str(interaction.user.id) == str(interaction.guild.owner.id)):  # ID's are 1 admin and the server owner
-        db = sql.connect('clan_points.db')
-        cursor = db.cursor()
-        result = cursor.execute(command)
-        if "DROP TABLE" not in result:
-            if "TRUNCATE TABLE" not in result:
-                if "DELETE" not in result:
-                    await interaction.response.send_message(result.fetchall(), allowed_mentions=allowed, ephemeral=silent_response)
-        else:
-            await interaction.response.send_message("Sorry, the \"DROP TABLE\", \"TRUNCATE TABLE\", and \"DELETE\" commands are not available via discord command.", allowed_mentions=allowed, ephemeral=silent_response)
-        cursor.close()
-        db.close()
-    else:
-        await interaction.response.send_message("Sorry, only Trusted Users:tm: can execute SQL commands!", allowed_mentions=allowed, ephemeral=public_response)
 
 
 # ============================================================
@@ -571,7 +644,6 @@ def valid_command_user(discord_id_receiver, points_delta, reward_id):
 
 
 # 8 Make sure users don't already have the reward they want to claim
-# TODO make sure this works
 def can_claim_reward(discord_id_receiver, reward_id):
     # Certain rewards can only be claimed once
     printd("Validating reward claim history..")
