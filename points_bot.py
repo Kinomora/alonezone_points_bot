@@ -42,7 +42,7 @@ twenty_five_mil_bonus = 5  # Default 5 - bonus points per 25 mil
 ten_mil_bonus = 3  # Default 3 - bonus points per 10 mil
 mil_points = 1  # Default 1 - points per mil
 entries_per_page = 10  # Set the number of records per discord message (pagination for long point and donation histories)
-clientVersion = "Version 1.0" + args.ver
+clientVersion = "Version 1.1.1" + args.ver
 database = 'clan_points.db'
 if args.mode == "True":
     devMode = True
