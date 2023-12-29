@@ -35,10 +35,10 @@ allowed = discord.AllowedMentions.all()
 # ============================================================
 # =GLOBAL AND META VARIABLES==================================
 # ============================================================
-guild = 991568104687681577
-admin_channel = 1164655165094244352
-hundred_mil_bonus = 7  # Default 15 - bonus points per 100mil
-twenty_five_mil_bonus = 4  # Default 5 - bonus points per 25 mil
+guild = 702147907691872376
+admin_channel = 709113492573257811
+hundred_mil_bonus = 7  # Default 7 - bonus points per 100mil
+twenty_five_mil_bonus = 5  # Default 5 - bonus points per 25 mil
 ten_mil_bonus = 3  # Default 3 - bonus points per 10 mil
 mil_points = 1  # Default 1 - points per mil
 entries_per_page = 10  # Set the number of records per discord message (pagination for long point and donation histories)
@@ -73,17 +73,13 @@ def printd(var):
 def validate_point_from_donation(donation_amount, points_delta):
     # Dont trust anyone to do basic math
     # Bonus points are awared for passing thresholds plus the standard point-per-mil (default 1 ppm)
-    # Points cannot count for more than 1 threshold, ie, 100m points doesn't give 7*1(100m) + 4*4(25m) + 3*10(10m), it only gives 107 points)
-    # Divide by 100, result x 15 (each 100m gets 15 bonus points)
-    # Modulus of previous calculation divide by 25, result x 7 (each 25m gets 7 bonus points)
-    # Modulus of previous calculation added to result
-    # Return total points
+    # Points count for each threshold, ie, 100m points give 7*1(100m) + 5*4(25m) + 3*10(10m),  gives 157 points)
     mils = int(donation_amount / 1000000)  # converting mils donated into single digits for easier math
     hundred_points = int(mils / 100)
     printd("Member gets " + str(hundred_points) + " bonus 100 mil points.")
-    twenty_five_points = int((mils % 100) / 25)
+    twenty_five_points = int(mils / 25)
     printd("Member gets " + str(twenty_five_points) + " bonus 25 mil points.")
-    ten_points = int(((mils % 100) % 25) / 10)
+    ten_points = int(mils / 10)
     printd("Member gets " + str(ten_points) + " bonus 10 mil points.")
     ones_points = int(mils * mil_points)
     total_points = (hundred_points * hundred_mil_bonus) + (twenty_five_points * twenty_five_mil_bonus) + (ten_points * ten_mil_bonus) + ones_points
