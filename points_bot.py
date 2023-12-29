@@ -42,7 +42,7 @@ twenty_five_mil_bonus = 5  # Default 5 - bonus points per 25 mil
 ten_mil_bonus = 3  # Default 3 - bonus points per 10 mil
 mil_points = 1  # Default 1 - points per mil
 entries_per_page = 10  # Set the number of records per discord message (pagination for long point and donation histories)
-clientVersion = "Version 1.1.1" + args.ver
+clientVersion = "Version 1.2.0" + args.ver
 database = 'clan_points.db'
 if args.mode == "True":
     devMode = True
@@ -69,12 +69,10 @@ def printd(var):
         print(str(var))
 
 
-# a3 CALCULATE POINTS
-def validate_point_from_donation(donation_amount, points_delta):
-    # Dont trust anyone to do basic math
-    # Bonus points are awared for passing thresholds plus the standard point-per-mil (default 1 ppm)
-    # Points count for each threshold, ie, 100m points give 7*1(100m) + 5*4(25m) + 3*10(10m),  gives 157 points)
+# a4 Calculate a points value given the donation amount
+def calculate_points_from_donation(donation_amount):
     mils = int(donation_amount / 1000000)  # converting mils donated into single digits for easier math
+    printd("Member donated " + str(mils) + "mil GP.")
     hundred_points = int(mils / 100)
     printd("Member gets " + str(hundred_points) + " bonus 100 mil points.")
     twenty_five_points = int(mils / 25)
@@ -84,25 +82,6 @@ def validate_point_from_donation(donation_amount, points_delta):
     ones_points = int(mils * mil_points)
     total_points = (hundred_points * hundred_mil_bonus) + (twenty_five_points * twenty_five_mil_bonus) + (ten_points * ten_mil_bonus) + ones_points
     printd("Member gets " + str(total_points) + " points.")
-    if int(total_points) == int(points_delta):
-        return True
-    else:
-        return False
-
-
-# a4 Calculate a points value given the donation amount
-def calculate_points_from_donation(donation_amount):
-    hundred_points = int(donation_amount / 100000000)
-    # printd("How many bonus points for 100 million: " + str(hundred_points))
-
-    twenty_five_points = int((donation_amount % 100000000) / 25000000)
-    # printd("How many bonus points for 25 million: " + str(twenty_five_points))
-
-    ones_points = int(donation_amount / 1000000)
-    # printd("How many additional points for per million: " + str(ones_points))
-
-    total_points = (hundred_points * hundred_mil_bonus) + (twenty_five_points * twenty_five_mil_bonus) + ones_points
-    printd("Total points: " + str(total_points))
     return total_points
 
 
